@@ -143,9 +143,11 @@ func (p *DefaultProvider) instanceCreate(ctx context.Context,
 		return nil, fmt.Errorf("failed to clone vm template %d: %v", vmTemplateID, err)
 	}
 
-	err = p.instanceNetworkSetup(ctx, region, zone, newID)
-	if err != nil {
-		return nil, fmt.Errorf("failed to configure networking for vm %d: %v", newID, err)
+	if nodeClass.Spec.BootMethod != v1alpha1.BootMethodPXE {
+		err = p.instanceNetworkSetup(ctx, region, zone, newID)
+		if err != nil {
+			return nil, fmt.Errorf("failed to configure networking for vm %d: %v", newID, err)
+		}
 	}
 
 	rules := make([]*proxmox.FirewallRule, len(nodeClass.Spec.SecurityGroups))
@@ -166,7 +168,7 @@ func (p *DefaultProvider) instanceCreate(ctx context.Context,
 		}
 	}
 
-	if nodeClass.Spec.MetadataOptions.Type == "cdrom" {
+	if nodeClass.Spec.BootMethod != v1alpha1.BootMethodPXE && nodeClass.Spec.MetadataOptions.Type == "cdrom" {
 		err = p.attachCloudInitISO(ctx, nodeClaim, nodeClass, instanceTemplate, instanceType, region, zone, newID)
 		if err != nil {
 			return nil, fmt.Errorf("failed to attach cloud-init ISO to vm %d: %v", newID, err)
