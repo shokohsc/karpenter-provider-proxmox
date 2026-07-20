@@ -51,4 +51,7 @@ const (
 
 	// AnnotationProxmoxNodeInPlaceUpdateHash is the annotation key for the hash of the in-place update
 	AnnotationProxmoxNodeInPlaceUpdateHash = apis.Group + "/proxmoxnodeinplaceupdate-hash"
+
+	// AnnotationProxmoxBootMethod is the annotation key for the boot method of the Proxmox node
+	AnnotationProxmoxBootMethod = apis.Group + "/proxmoxboot-method"
 )
