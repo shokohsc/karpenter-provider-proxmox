@@ -1,0 +1,39 @@
+apiVersion: karpenter.sh/v1
+kind: NodePool
+metadata:
+  name: talos-pxe
+spec:
+  template:
+    spec:
+      requirements:
+        - key: karpenter.sh/capacity-type
+          operator: In
+          values: ["on-demand"]
+        - key: karpenter.k8s.aws/instance-category
+          operator: In
+          values: ["general", "compute"]
+      nodeClassRef:
+        group: karpenter.proxmox.io
+        kind: ProxmoxNodeClass
+        name: talos-pxe
+  limits:
+    cpu: "100"
+  disruption:
+    consolidationPolicy: WhenUnderutilized
+---
+apiVersion: karpenter.proxmox.io/v1alpha1
+kind: ProxmoxNodeClass
+metadata:
+  name: talos-pxe
+spec:
+  region: "pve-1"
+  bootMethod: pxe
+  instanceTemplateRef:
+    kind: ProxmoxUnmanagedTemplate
+    name: talos-pxe-template
+  bootDevice:
+    size: 50G
+    storage: "local-lvm"
+  tags:
+    - "talos"
+    - "pxe"
