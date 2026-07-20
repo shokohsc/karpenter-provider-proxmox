@@ -145,6 +145,7 @@ func (c CloudProvider) Create(ctx context.Context, nodeClaim *karpv1.NodeClaim) 
 		v1alpha1.AnnotationProxmoxNodeClassHash:         nodeClass.Hash(),
 		v1alpha1.AnnotationProxmoxNodeClassHashVersion:  v1alpha1.ProxmoxNodeClassHashVersion,
 		v1alpha1.AnnotationProxmoxNodeInPlaceUpdateHash: nodeClass.InPlaceHash(),
+		v1alpha1.AnnotationProxmoxBootMethod:            nodeClass.Spec.BootMethod,
 	})
 
 	return nc, nil
