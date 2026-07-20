@@ -251,12 +251,15 @@ func (p *DefaultProvider) instanceDelete(ctx context.Context,
 		return fmt.Errorf("cannot delete VM with id %d: %w", vmr.VMID, err)
 	}
 
-	networkValues := cloudinit.GetNetworkConfigFromVirtualMachineConfig(vm.VirtualMachineConfig, nil)
-	for _, iface := range networkValues.Interfaces {
-		for _, cidr := range iface.Address4 {
-			err := p.nodeIpamProvider.ReleaseIP(cidr)
-			if err != nil {
-				log.Error(err, "Failed to release IP", "cidr", cidr)
+	// ponytail: PXE nodes never had IPs allocated via IPAM, skip release to avoid ErrNoSubnetFound noise.
+	if nodeClaim.Annotations[v1alpha1.AnnotationProxmoxBootMethod] != v1alpha1.BootMethodPXE {
+		networkValues := cloudinit.GetNetworkConfigFromVirtualMachineConfig(vm.VirtualMachineConfig, nil)
+		for _, iface := range networkValues.Interfaces {
+			for _, cidr := range iface.Address4 {
+				err := p.nodeIpamProvider.ReleaseIP(cidr)
+				if err != nil {
+					log.Error(err, "Failed to release IP", "cidr", cidr)
+				}
 			}
 		}
 	}
