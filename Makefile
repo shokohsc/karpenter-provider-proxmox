@@ -207,6 +207,7 @@ images: ## Build images
 		--build-arg TAG="$(TAG)" \
 		--build-arg SHA="$(SHA)" \
 		-t $(IMAGE):$(TAG) \
+		$(if $(TAG_SHA),-t $(IMAGE):$(TAG_SHA)) \
 		--target karpenter-provider-proxmox \
 		-f Dockerfile .
 

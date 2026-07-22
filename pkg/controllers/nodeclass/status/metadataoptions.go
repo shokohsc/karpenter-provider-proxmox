@@ -39,6 +39,11 @@ type MetadataOptions struct {
 }
 
 func (i *MetadataOptions) Reconcile(ctx context.Context, nodeClass *v1alpha1.ProxmoxNodeClass) (reconcile.Result, error) {
+	if nodeClass.Spec.BootMethod == v1alpha1.BootMethodPXE {
+		nodeClass.StatusConditions().SetTrue(v1alpha1.ConditionInstanceMetadataOptionsReady)
+		return reconcile.Result{}, nil
+	}
+
 	if nodeClass.Spec.MetadataOptions.Type == "cdrom" {
 		if nodeClass.Spec.MetadataOptions.TemplatesRef == nil || nodeClass.Spec.MetadataOptions.TemplatesRef.Name == "" || nodeClass.Spec.MetadataOptions.TemplatesRef.Namespace == "" {
 			nodeClass.StatusConditions().SetFalse(

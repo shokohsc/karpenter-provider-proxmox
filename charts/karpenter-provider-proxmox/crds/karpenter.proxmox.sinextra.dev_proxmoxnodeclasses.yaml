@@ -87,6 +87,16 @@ spec:
                     maxLength: 30
                     type: string
                 type: object
+              bootMethod:
+                default: cloudInit
+                description: |-
+                  BootMethod specifies how the VM is bootstrapped.
+                  "cloudInit" (default) uses cloud-init ISO with templates.
+                  "pxe" skips cloud-init and network setup, expecting PXE network boot.
+                enum:
+                - cloudInit
+                - pxe
+                type: string
               instanceTemplateRef:
                 description: InstanceTemplateRef is the template reference for the
                   VM template

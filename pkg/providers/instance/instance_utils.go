@@ -143,9 +143,11 @@ func (p *DefaultProvider) instanceCreate(ctx context.Context,
 		return nil, fmt.Errorf("failed to clone vm template %d: %v", vmTemplateID, err)
 	}
 
-	err = p.instanceNetworkSetup(ctx, region, zone, newID)
-	if err != nil {
-		return nil, fmt.Errorf("failed to configure networking for vm %d: %v", newID, err)
+	if nodeClass.Spec.BootMethod != v1alpha1.BootMethodPXE {
+		err = p.instanceNetworkSetup(ctx, region, zone, newID)
+		if err != nil {
+			return nil, fmt.Errorf("failed to configure networking for vm %d: %v", newID, err)
+		}
 	}
 
 	rules := make([]*proxmox.FirewallRule, len(nodeClass.Spec.SecurityGroups))
@@ -166,7 +168,7 @@ func (p *DefaultProvider) instanceCreate(ctx context.Context,
 		}
 	}
 
-	if nodeClass.Spec.MetadataOptions.Type == "cdrom" {
+	if nodeClass.Spec.BootMethod != v1alpha1.BootMethodPXE && nodeClass.Spec.MetadataOptions.Type == "cdrom" {
 		err = p.attachCloudInitISO(ctx, nodeClaim, nodeClass, instanceTemplate, instanceType, region, zone, newID)
 		if err != nil {
 			return nil, fmt.Errorf("failed to attach cloud-init ISO to vm %d: %v", newID, err)
@@ -249,12 +251,15 @@ func (p *DefaultProvider) instanceDelete(ctx context.Context,
 		return fmt.Errorf("cannot delete VM with id %d: %w", vmr.VMID, err)
 	}
 
-	networkValues := cloudinit.GetNetworkConfigFromVirtualMachineConfig(vm.VirtualMachineConfig, nil)
-	for _, iface := range networkValues.Interfaces {
-		for _, cidr := range iface.Address4 {
-			err := p.nodeIpamProvider.ReleaseIP(cidr)
-			if err != nil {
-				log.Error(err, "Failed to release IP", "cidr", cidr)
+	// ponytail: PXE nodes never had IPs allocated via IPAM, skip release to avoid ErrNoSubnetFound noise.
+	if nodeClaim.Annotations[v1alpha1.AnnotationProxmoxBootMethod] != v1alpha1.BootMethodPXE {
+		networkValues := cloudinit.GetNetworkConfigFromVirtualMachineConfig(vm.VirtualMachineConfig, nil)
+		for _, iface := range networkValues.Interfaces {
+			for _, cidr := range iface.Address4 {
+				err := p.nodeIpamProvider.ReleaseIP(cidr)
+				if err != nil {
+					log.Error(err, "Failed to release IP", "cidr", cidr)
+				}
 			}
 		}
 	}

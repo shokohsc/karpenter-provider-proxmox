@@ -1,0 +1,10 @@
+apiVersion: karpenter.proxmox.io/v1alpha1
+kind: ProxmoxUnmanagedTemplate
+metadata:
+  name: talos-pxe-template
+spec:
+  region: "pve-1"
+  templateName: "talos-pxe-base"
+  tags:
+    - "talos"
+    - "pxe"
