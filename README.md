@@ -24,6 +24,7 @@ Also, having free resources can provide more advantages than we might initially 
 * [x] Dynamic VM creation and termination
 * [x] Cloud-init metadata delivery via CD-ROM
 * [x] Cloud-init Go-template metadata support (dynamic metadata based on instance type and node location)
+* [x] PXE network boot support, for example for Talos without cloud-init metadata
 * [x] Firewall security group support
 * [x] Kubelet short-lived join tokens
 * [x] Kubelet configuration tuning

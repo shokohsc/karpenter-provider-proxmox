@@ -1,0 +1,35 @@
+---
+apiVersion: karpenter.sh/v1
+kind: NodePool
+metadata:
+  name: talos-pxe
+spec:
+  limits:
+    cpu: "100"
+  disruption:
+    consolidationPolicy: WhenUnderutilized
+  template:
+    spec:
+      nodeClassRef:
+        group: karpenter.proxmox.sinextra.dev
+        kind: ProxmoxNodeClass
+        name: talos-pxe
+      requirements:
+        - key: "kubernetes.io/arch"
+          operator: In
+          values: ["amd64"]
+---
+apiVersion: karpenter.proxmox.sinextra.dev/v1alpha1
+kind: ProxmoxNodeClass
+metadata:
+  name: talos-pxe
+spec:
+  bootMethod: pxe
+  instanceTemplateRef:
+    kind: ProxmoxUnmanagedTemplate
+    name: talos-pxe-template
+  bootDevice:
+    size: 30Gi
+  tags:
+    - talos
+    - pxe

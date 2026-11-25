@@ -144,9 +144,11 @@ func (p *DefaultProvider) instanceCreate(ctx context.Context,
 		return nil, err
 	}
 
-	err = p.instanceNetworkSetup(ctx, rollback, region, zone, newID)
-	if err != nil {
-		return nil, fmt.Errorf("failed to configure networking for vm %d: %v", newID, err)
+	if nodeClass.Spec.BootMethod != v1alpha1.BootMethodPXE {
+		err = p.instanceNetworkSetup(ctx, rollback, region, zone, newID)
+		if err != nil {
+			return nil, fmt.Errorf("failed to configure networking for vm %d: %v", newID, err)
+		}
 	}
 
 	rules := buildFirewallRules(nodeClass.Spec.SecurityGroups)
@@ -169,7 +171,7 @@ func (p *DefaultProvider) instanceCreate(ctx context.Context,
 		}
 	}
 
-	if nodeClass.Spec.MetadataOptions.Type == "cdrom" {
+	if nodeClass.Spec.BootMethod != v1alpha1.BootMethodPXE && nodeClass.Spec.MetadataOptions.Type == "cdrom" {
 		err = p.attachCloudInitISO(ctx, rollback, nodeClaim, nodeClass, instanceType, region, zone, newID)
 		if err != nil {
 			return nil, fmt.Errorf("failed to attach cloud-init ISO to vm %d: %v", newID, err)
@@ -229,6 +231,7 @@ func (p *DefaultProvider) instanceCreate(ctx context.Context,
 }
 
 func (p *DefaultProvider) instanceDelete(ctx context.Context,
+	nodeClaim *karpv1.NodeClaim,
 	region string,
 	zone string,
 	vmr *cluster.Resource,
@@ -249,12 +252,15 @@ func (p *DefaultProvider) instanceDelete(ctx context.Context,
 		return fmt.Errorf("cannot delete VM with id %d: %w", vmr.VMID, err)
 	}
 
-	networkValues := cloudinit.GetNetworkConfigFromVirtualMachineConfig(cfg, nil)
-	for _, iface := range networkValues.Interfaces {
-		for _, cidr := range iface.Address4 {
-			err := p.nodeIpamProvider.ReleaseIP(cidr)
-			if err != nil {
-				log.Error(err, "Failed to release IP", "cidr", cidr)
+	// PXE nodes never had IPs allocated via IPAM, skip release to avoid ErrNoSubnetFound noise.
+	if nodeClaim.Annotations[v1alpha1.AnnotationProxmoxBootMethod] != v1alpha1.BootMethodPXE {
+		networkValues := cloudinit.GetNetworkConfigFromVirtualMachineConfig(cfg, nil)
+		for _, iface := range networkValues.Interfaces {
+			for _, cidr := range iface.Address4 {
+				err := p.nodeIpamProvider.ReleaseIP(cidr)
+				if err != nil {
+					log.Error(err, "Failed to release IP", "cidr", cidr)
+				}
 			}
 		}
 	}

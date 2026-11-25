@@ -35,6 +35,11 @@ const (
 	// PlacementStrategyBestFit strategy packs nodes into the zones they leave fullest
 	PlacementStrategyBestFit = "BestFit"
 
+	// BootMethodCloudInit uses cloud-init ISO for node bootstrap (default)
+	BootMethodCloudInit = "cloudInit"
+	// BootMethodPXE uses PXE network boot for node bootstrap
+	BootMethodPXE = "pxe"
+
 	// ResourceZones names for ProxmoxNodeClass status
 	ResourceZones corev1.ResourceName = "zones"
 )
@@ -97,6 +102,16 @@ type ProxmoxNodeClassSpec struct {
 	// +kubebuilder:default={"type":"none"}
 	// +optional
 	MetadataOptions *MetadataOptions `json:"metadataOptions,omitempty" hash:"ignore"`
+
+	// BootMethod defines how nodes are bootstrapped.
+	// "cloudInit" (default) uses a cloud-init ISO attached to the VM.
+	// "pxe" uses PXE network boot: the VM boots from the network and gets its
+	// configuration from the PXE/TFTP server, so no cloud-init metadata is attached.
+	// When "pxe", metadataOptions, templatesRef, and valuesRef are ignored.
+	// +kubebuilder:default=cloudInit
+	// +kubebuilder:validation:Enum:={cloudInit,pxe}
+	// +optional
+	BootMethod string `json:"bootMethod,omitempty"`
 
 	// SecurityGroups to apply to the VMs
 	// +kubebuilder:validation:MaxItems:=10

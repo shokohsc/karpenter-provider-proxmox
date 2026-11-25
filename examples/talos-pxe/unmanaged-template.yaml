@@ -1,0 +1,9 @@
+apiVersion: karpenter.proxmox.sinextra.dev/v1alpha1
+kind: ProxmoxUnmanagedTemplate
+metadata:
+  name: talos-pxe-template
+spec:
+  templateName: talos-pxe
+  tags:
+    - talos
+    - pxe

@@ -85,6 +85,8 @@ type launchSetup struct {
 	memory string
 	// metadataType is the node class's metadata delivery; default "cdrom".
 	metadataType string
+	// bootMethod is the node class's boot method; default cloud-init.
+	bootMethod string
 	// manualTasks leaves every Proxmox task running until the test
 	// completes it.
 	manualTasks bool
@@ -122,6 +124,7 @@ type launchFixture struct {
 	provider     *instance.DefaultProvider
 	capacity     *cloudcapacity.DefaultProvider
 	types        *instancetype.DefaultProvider
+	nodeIPAM     nodeipam.Provider
 	options      *options.Options
 	setup        launchSetup
 	nodeClass    *v1alpha1.ProxmoxNodeClass
@@ -277,8 +280,10 @@ func startLaunchFixture(t *testing.T, setup launchSetup, cl *fakeapi.Cluster) *l
 		instancetype.Readers{API: crfake.NewClientBuilder().Build(), Cached: templateReader})
 	require.NoError(t, instanceTypes.UpdateInstanceTypes(ctx))
 
+	ipam := nodeipam.NewDefaultProvider(ctx, capacity)
+
 	p, err := instance.NewProvider(ctx, kube, bootstrap.NewProvider(ctx, kube), pool, capacity,
-		nodeipam.NewDefaultProvider(ctx, capacity), templates, instanceTypes, privileges)
+		ipam, templates, instanceTypes, privileges)
 	require.NoError(t, err)
 
 	size := resource.MustParse("10G")
@@ -295,6 +300,7 @@ func startLaunchFixture(t *testing.T, setup launchSetup, cl *fakeapi.Cluster) *l
 				Type:         setup.metadataType,
 				TemplatesRef: &corev1.SecretReference{Name: "cloud-init", Namespace: metav1.NamespaceSystem},
 			},
+			BootMethod: setup.bootMethod,
 		},
 		Status: v1alpha1.ProxmoxNodeClassStatus{SelectedZones: placements},
 	}
@@ -357,6 +363,7 @@ func startLaunchFixture(t *testing.T, setup launchSetup, cl *fakeapi.Cluster) *l
 		provider:     p,
 		capacity:     capacity,
 		types:        instanceTypes,
+		nodeIPAM:     ipam,
 		options:      operatorOptions,
 		setup:        setup,
 		nodeClass:    nodeClass,
@@ -882,6 +889,24 @@ func TestCreateWithoutCloudInitISO(t *testing.T) {
 	assert.False(t, attached, "no ISO is attached")
 	assert.Empty(t, f.isos(), "no ISO is uploaded")
 	assert.Equal(t, f.firstAddress(), cfg.IPConfig[0].IPv4)
+}
+
+// TestCreatePXE checks that a PXE boot node keeps the template's network configuration, gets no
+// cloud-init ISO, and does not allocate an address from the IP pool.
+func TestCreatePXE(t *testing.T) {
+	f := newLaunchFixture(t, launchSetup{bootMethod: v1alpha1.BootMethodPXE})
+
+	node, err := f.create(f.ctx, "node-1")
+	require.NoError(t, err)
+
+	cfg := f.vmConfig(node)
+	_, attached := cfg.IDE[2]
+
+	assert.False(t, attached, "no cloud-init ISO is attached")
+	assert.Empty(t, f.isos(), "no ISO is uploaded")
+	assert.Equal(t, f.setup.subnet, cfg.IPConfig[0].IPv4, "the template's network config is left untouched")
+	assert.ErrorIs(t, f.nodeIPAM.ReleaseIP(f.firstAddress()), nodeipam.ErrNoSubnetFound,
+		"no subnet was registered and no address was taken from the IP pool")
 }
 
 // TestCreateRollsBack fails each launch step that has an undo, and checks

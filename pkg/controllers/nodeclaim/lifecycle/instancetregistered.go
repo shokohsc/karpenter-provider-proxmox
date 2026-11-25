@@ -60,7 +60,7 @@ func (i *InstanceRegistered) Reconcile(ctx context.Context, nodeClaim *karpv1.No
 		return reconcile.Result{}, err
 	}
 
-	if nodeClass.Spec.MetadataOptions.Type == "cdrom" {
+	if nodeClass.Spec.BootMethod != v1alpha1.BootMethodPXE && nodeClass.Spec.MetadataOptions.Type == "cdrom" {
 		err = i.instanceProvider.DetachCloudInit(ctx, nodeClaim)
 		if err != nil {
 			return reconcile.Result{RequeueAfter: 5 * time.Second}, err

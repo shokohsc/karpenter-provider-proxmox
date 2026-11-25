@@ -45,6 +45,13 @@ spec:
   tags:
     - karpenter
 
+  # BootMethod defines how nodes are bootstrapped
+  # Valid values: cloudInit, pxe
+  # Optional, defaults to cloudInit
+  # When pxe is used, the VM boots from the network and gets its configuration
+  # from the PXE/TFTP server; metadataOptions is ignored.
+  bootMethod: cloudInit
+
   # MetadataOptions contains parameters for specifying the cloud-init metadata
   # Optional, defaults type is `none`
   metadataOptions:
@@ -107,6 +114,10 @@ spec:
 * `tags` - A list of tags to apply to the VMs after creation. Optional.
   This option supports in-place update.
 
+* `bootMethod` - Defines how nodes are bootstrapped. Optional, defaults to `cloudInit`.
+  - `cloudInit` - Attaches a cloud-init ISO with the rendered metadata to the VM.
+  - `pxe` - Boots the VM from the network. The provider does not attach cloud-init metadata, configure network addresses, or allocate IPAM addresses. The PXE/TFTP server supplies the kernel arguments, including the location of the Talos machine configuration (for example `talos.config=https://config.example.com/config.yaml`). `metadataOptions` is ignored.
+
 * `metadataOptions` - Contains parameters for specifying the cloud-init metadata. Optional, defaults type is `none`.
   - `type` - The type of the metadata to expose to the VMs. Valid values: `none` or `cdrom`.
   - `templatesRef` - Used if the type is `cdrom`. It references a secret that contains cloud-init metadata templates.
@@ -138,6 +149,8 @@ Changes to these fields are ignored during drift evaluation:
 * `metadataOptions`
 * `securityGroups`
 * `resourcePool`
+
+Changing `bootMethod` does trigger drift, because it changes how a node boots and joins the cluster.
 
 The `ProxmoxTemplate` and `ProxmoxUnmanagedTemplate` resource definitions see [here](nodetemplateclass.md).
 
